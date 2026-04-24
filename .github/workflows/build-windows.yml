@@ -1,0 +1,97 @@
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., 1.19.0)'
+        required: false
+        type: string
+  release:
+    types: [published]
+
+name: Build Windows Executable
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Install dependencies
+      run: |
+        uv sync
+        uv pip install pyinstaller
+
+    - name: Build executable
+      run: |
+        pyinstaller --name=pikaraoke --onefile ^
+          --add-data "pikaraoke/static;static" ^
+          --hidden-import=flask ^
+          --hidden-import=flask_socketio ^
+          --hidden-import=gevent ^
+          --hidden-import=gevent._core ^
+          --hidden-import=gevent._util ^
+          --hidden-import=gevent.builtins ^
+          --hidden-import=gevent.greenlet ^
+          --hidden-import=gevent.hub ^
+          --hidden-import=gevent.libev ^
+          --hidden-import=gevent.libuv ^
+          --hidden-import=gevent.local ^
+          --hidden-import=gevent.monkey ^
+          --hidden-import=gevent.pool ^
+          --hidden-import=gevent.py3 ^
+          --hidden-import=gevent.queue ^
+          --hidden-import=gevent resolver ^
+          --hidden-import=gevent.select ^
+          --hidden-import=gevent.signal ^
+          --hidden-import=gevent.socket ^
+          --hidden-import=gevent.ssl ^
+          --hidden-import=gevent.subprocess ^
+          --hidden-import=gevent.thread ^
+          --hidden-import=gevent.threading ^
+          --hidden-import=gevent.time ^
+          --hidden-import=gevent.websocket ^
+          --hidden-import=gevent.wsgi ^
+          --hidden-import=greenlet ^
+          --hidden-import=babel ^
+          --collect-all pikaraoke ^
+          pikaraoke/app.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pikaraoke-windows
+        path: dist/pikaraoke.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || github.event.inputs.version
+    permissions:
+      contents: write
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: pikaraoke-windows
+
+    - name: Rename artifact
+      run: |
+        version=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
+        mv pikaraoke.exe "pikaraoke-$version-windows-x64.exe"
+
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: pikaraoke-*-windows-x64.exe
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
