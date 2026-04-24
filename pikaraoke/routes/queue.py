@@ -179,6 +179,8 @@ def queue_edit(query):
 
 def _do_enqueue(song: str, user: str) -> str:
     k = get_karaoke_instance()
+    if k.preferences.get_or_default("enable_owner_queue"):
+        return json.dumps({"song": "", "success": [False, _("Owner queue mode is enabled. Only the owner can add songs.")]})
     rc = k.queue_manager.enqueue(song, user)
     broadcast_event("queue_update")
     song_title = k.song_manager.display_name_from_path(song)

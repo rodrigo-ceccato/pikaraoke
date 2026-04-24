@@ -22,7 +22,7 @@ class PreferenceManager:
 
     # Default values for all user preferences (single source of truth)
     DEFAULTS = {
-        "hide_url": False,
+        "hide_url": True,
         "hide_notifications": False,
         "high_quality": False,
         "splash_delay": 2,
@@ -38,6 +38,7 @@ class PreferenceManager:
         "disable_score": False,
         "limit_user_songs_by": 0,
         "enable_fair_queue": False,
+        "enable_owner_queue": False,
         "cdg_pixel_scaling": False,
         "avsync": 0,
         "browse_results_per_page": 100,

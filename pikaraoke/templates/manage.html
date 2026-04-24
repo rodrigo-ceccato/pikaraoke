@@ -1,0 +1,153 @@
+{% extends 'base.html' %} {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+<script>
+  function escape(str) {
+    return encodeURIComponent(str);
+  }
+
+  if (typeof window.socket === 'undefined') {
+    window.socket = io();
+  }
+
+  $(function() {
+    setInterval(function() {
+      if ($('#queue-refresh').length > 0) {
+        $.get('{{ url_for("manage.manage") }}', function(data) {
+          var newQueue = $(data).find('#queue-data').data('queue');
+          var currentQueue = $('#queue-data').data('queue');
+          if (JSON.stringify(newQueue) !== JSON.stringify(currentQueue)) {
+            location.reload();
+          }
+        });
+      }
+    }, 5000);
+  });
+</script>
+{% endblock %} {% block header %}
+<h1>{% block title %}{% trans %}Manage Queue{% endtrans %}{% endblock %}</h1>
+{% endblock %} {% block content %}
+
+<div class="box" style="max-width: 600px">
+  <h3>{% trans %}Add Song{% endtrans %}</h3>
+  <form method="POST" action="{{ url_for('manage.add_song') }}">
+    <div class="field">
+      <label class="label">{% trans %}Username{% endtrans %}</label>
+      <div class="control">
+        <input
+          class="input"
+          type="text"
+          name="username"
+          placeholder="{{ _('Enter singer name') }}"
+          required
+        />
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">{% trans %}YouTube URL{% endtrans %}</label>
+      <div class="control">
+        <input
+          class="input"
+          type="url"
+          name="youtube_url"
+          placeholder="https://www.youtube.com/watch?v=..."
+          required
+        />
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">{% trans %}Pitch Shift (semitones){% endtrans %}</label>
+      <div class="control">
+        <input
+          class="input"
+          type="number"
+          name="semitones"
+          value="0"
+          min="-12"
+          max="12"
+          style="width: 100px"
+        />
+      </div>
+    </div>
+    <div class="field">
+      <div class="control">
+        <button type="submit" class="button is-primary">
+          {% trans %}Add to Queue{% endtrans %}
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="box" style="max-width: 600px">
+  <div class="is-flex" style="justify-content: space-between; align-items: center">
+    <h3>{% trans %}Current Queue{% endtrans %}</h3>
+    <form method="POST" action="{{ url_for('manage.clear_queue_action') }}">
+      <button type="submit" class="button is-danger is-small">
+        {% trans %}Clear All{% endtrans %}
+      </button>
+    </form>
+  </div>
+
+  <table class="table is-fullwidth is-striped">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>{% trans %}User{% endtrans %}</th>
+        <th>{% trans %}Song{% endtrans %}</th>
+        <th>{% trans %}Key{% endtrans %}</th>
+        <th>{% trans %}Actions{% endtrans %}</th>
+      </tr>
+    </thead>
+    <tbody id="queue-refresh">
+      {% for item in queue %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ item.user }}</td>
+        <td>{{ item.title }}</td>
+        <td>
+          {% if item.semitones != 0 %}{{ item.semitones }}{% else %}-{% endif
+          %}
+        </td>
+        <td>
+          <div class="buttons">
+            <form method="POST" action="{{ url_for('manage.move_song', song=item.file, action='top') }}">
+              <button type="submit" class="button is-small is-info" title="{% trans %}Move to top{% endtrans %}">
+                <i class="icon icon-to-start"></i>
+              </button>
+            </form>
+            <form method="POST" action="{{ url_for('manage.move_song', song=item.file, action='up') }}">
+              <button type="submit" class="button is-small" title="{% trans %}Move up{% endtrans %}">
+                <i class="icon icon-up-dir"></i>
+              </button>
+            </form>
+            <form method="POST" action="{{ url_for('manage.move_song', song=item.file, action='down') }}">
+              <button type="submit" class="button is-small" title="{% trans %}Move down{% endtrans %}">
+                <i class="icon icon-down-dir"></i>
+              </button>
+            </form>
+            <form method="POST" action="{{ url_for('manage.move_song', song=item.file, action='bottom') }}">
+              <button type="submit" class="button is-small is-info" title="{% trans %}Move to bottom{% endtrans %}">
+                <i class="icon icon-to-end"></i>
+              </button>
+            </form>
+            <form method="POST" action="{{ url_for('manage.delete_song', song=item.file) }}">
+              <button type="submit" class="button is-small is-danger" title="{% trans %}Remove{% endtrans %}">
+                <i class="icon icon-cancel"></i>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5">
+          <p class="has-text-warning">{% trans %}The queue is empty{% endtrans %}</p>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

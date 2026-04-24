@@ -14,6 +14,7 @@ from flask_babel import _
 
 from pikaraoke.lib.events import EventSystem
 from pikaraoke.lib.preference_manager import PreferenceManager
+from pikaraoke.lib.youtube_dl import get_youtube_id_from_url
 
 
 class QueueManager:
@@ -152,6 +153,26 @@ class QueueManager:
             True,
             _("Song added to the queue: %s") % title,
         ]
+
+    def enqueue_for_user(
+        self,
+        youtube_url: str,
+        user: str,
+        semitones: int = 0,
+    ) -> list[bool | str]:
+        """Queue a song by YouTube URL for a specific user.
+
+        Validates the YouTube URL and adds to queue.
+
+        Returns:
+            [success, message]
+        """
+        video_id = get_youtube_id_from_url(youtube_url)
+        if not video_id:
+            return [False, _("Invalid YouTube URL: %s") % youtube_url]
+
+        song_path = f"https://www.youtube.com/watch?v={video_id}"
+        return self.enqueue(song_path, user, semitones)
 
     def queue_add_random(self, amount: int) -> bool:
         """Add random songs to the queue. Returns False if ran out of songs."""

@@ -457,6 +457,12 @@
 					</label>
 					</div>
 
+					<div class="user-preference-container">
+					<input id="pref-owner-queue" type="checkbox" class="user-preference-checkbox checkbox" data-pref="enable_owner_queue" {% if enable_owner_queue == True %}checked{% endif %}>
+					<label class="label" for="pref-owner-queue">{# MSG: Checkbox label which enables owner-only queue mode #} {% trans %}Enable owner queue mode (only the owner can manage the queue via the Manage page){% endtrans %}
+					</label>
+					</div>
+
 					<div class="user-preference-container is-align-items-center">
 					<input id="pref-buffer-size" class="user-preference-input input" type="number" min="0" max="9999" data-pref="buffer_size" data-start-value="{{ buffer_size }}" value="{{ buffer_size }}" />
 					<label class="label" for="pref-buffer-size">
