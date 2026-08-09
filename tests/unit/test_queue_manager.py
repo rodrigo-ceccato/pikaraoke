@@ -167,6 +167,25 @@ class TestQueueManagerFairQueue:
         users = [item["user"] for item in qm.queue]
         assert users == ["UserA", "UserB", "UserC", "UserA", "UserB"]
 
+    def test_fair_queue_interleaves_regardless_of_enqueue_order(self, preferences, events):
+        """A user's next song should precede later-round songs from following users."""
+        preferences.set("enable_fair_queue", True)
+        qm = QueueManager(
+            preferences=preferences,
+            events=events,
+            get_now_playing_user=lambda: None,
+            filename_from_path=extract_title,
+            get_available_songs=lambda: [],
+        )
+
+        qm.enqueue("/songs/a1---aaa.mp4", "UserA")
+        qm.enqueue("/songs/b1---bbb.mp4", "UserB")
+        qm.enqueue("/songs/b2---ccc.mp4", "UserB")
+        qm.enqueue("/songs/a2---ddd.mp4", "UserA")
+
+        users = [item["user"] for item in qm.queue]
+        assert users == ["UserA", "UserB", "UserA", "UserB"]
+
 
 class TestQueueManagerEdit:
     """Test queue editing functionality."""

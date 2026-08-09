@@ -66,31 +66,31 @@ class QueueManager:
     def _calculate_fair_queue_position(self, user: str) -> int:
         """Calculate insertion position using Nagle Fair Queuing.
 
-        Users take turns in rounds: a user's Nth song is placed after all
-        other users' Nth songs (or at queue end).
+        Users take turns in rounds that repeat the order established by each
+        user's first queued song.
         """
-        # Count how many songs this user already has in queue
-        user_song_count = sum(1 for item in self.queue if item["user"] == user)
+        # Preserve the rotation established by each user's first queued song.
+        user_order = list(dict.fromkeys(item["user"] for item in self.queue))
+        if user not in user_order:
+            user_order.append(user)
+        user_positions = {queue_user: idx for idx, queue_user in enumerate(user_order)}
 
-        # Find position after the last song in "round N" where N = user_song_count
-        # Round 0 = first song from each user, Round 1 = second song, etc.
+        # The new song belongs to the round after this user's existing songs.
+        user_song_count = sum(1 for item in self.queue if item["user"] == user)
         target_round = user_song_count
+        target_user_position = user_positions[user]
         songs_seen_per_user: dict[str, int] = {}
 
         for idx, item in enumerate(self.queue):
             queue_user = item["user"]
             songs_seen_per_user[queue_user] = songs_seen_per_user.get(queue_user, 0) + 1
-            # This song is in round (count - 1) for its user
             song_round = songs_seen_per_user[queue_user] - 1
-            if song_round == target_round:
-                # Found a song in the target round, insert after it
-                # Keep scanning to find the LAST song in this round
-                pass
-            elif song_round > target_round:
-                # We've moved past target round, insert here
+
+            if song_round > target_round or (
+                song_round == target_round and user_positions[queue_user] > target_user_position
+            ):
                 return idx
 
-        # All songs are in rounds <= target_round, append to end
         return len(self.queue)
 
     def enqueue(
