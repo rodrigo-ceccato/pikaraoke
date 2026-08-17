@@ -675,7 +675,11 @@
 
 					<div class="user-preference-container">
 					<input id="pref-fair-queue" type="checkbox" class="user-preference-checkbox checkbox" data-pref="enable_fair_queue" {% if enable_fair_queue == True %}checked{% endif %}>
-					<label class="label" for="pref-fair-queue">{# MSG: Checkbox label which enable/disables fair queue (round-robin) mode #} {% trans %}Enable fair queue (round-robin mode ensures users take turns){% endtrans %}
+					<label class="label" for="pref-fair-queue">
+						{# MSG: Checkbox label which enables/disables the spread singing queue #}
+						{% trans %}Enable spread singing queue{% endtrans %}
+						{# MSG: Help text explaining how the spread singing queue handles late joiners #}
+						<span class="help">{% trans %}Spreads each singer's turns across the queue, so people who join later enter progressively instead of jumping into the first round.{% endtrans %}</span>
 					</label>
 					</div>
 

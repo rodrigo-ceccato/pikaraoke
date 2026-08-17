@@ -289,8 +289,8 @@ class TestFairQueuePosition:
         # B's first song should slot in after A's first, before A's second
         assert users == ["UserA", "UserB", "UserA", "UserB"]
 
-    def test_fair_queue_three_users_complex(self, mock_karaoke):
-        """Test fair queuing with three users adding multiple songs."""
+    def test_fair_queue_spreads_late_joiners_through_backlog(self, mock_karaoke):
+        """Late joiners should be spread through an earlier singer's backlog."""
         # UserA adds 3 songs in a row
         mock_karaoke.queue_manager.enqueue("/songs/a1---a01.mp4", "UserA")
         mock_karaoke.queue_manager.enqueue("/songs/a2---a02.mp4", "UserA")
@@ -301,8 +301,8 @@ class TestFairQueuePosition:
         mock_karaoke.queue_manager.enqueue("/songs/c1---c01.mp4", "UserC")
 
         users = [item["user"] for item in mock_karaoke.queue_manager.queue]
-        # Expected: A1, B1, C1, A2, A3 (B and C slot into round 0)
-        assert users == ["UserA", "UserB", "UserC", "UserA", "UserA"]
+        # Expected: A1, B1, A2, C1, A3 (new singers enter later rounds)
+        assert users == ["UserA", "UserB", "UserA", "UserC", "UserA"]
 
     def test_fair_queue_late_joiner_gets_fair_position(self, mock_karaoke):
         """Test that a new user joining late gets fair position."""

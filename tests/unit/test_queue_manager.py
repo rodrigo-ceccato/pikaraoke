@@ -167,6 +167,65 @@ class TestQueueManagerFairQueue:
         users = [item["user"] for item in qm.queue]
         assert users == ["UserA", "UserB", "UserC", "UserA", "UserB"]
 
+    def test_fair_queue_accounts_for_current_singer_and_spreads_late_joiners(
+        self, preferences, events
+    ):
+        """Late joiners should be spaced after the song currently playing."""
+        preferences.set("enable_fair_queue", True)
+        now_playing_user = None
+        qm = QueueManager(
+            preferences=preferences,
+            events=events,
+            get_now_playing_user=lambda: now_playing_user,
+            filename_from_path=extract_title,
+            get_available_songs=lambda: [],
+        )
+
+        for number in range(1, 6):
+            qm.enqueue(f"/songs/a{number}---a{number}.mp4", "UserA")
+
+        now_playing_user = "UserA"
+        now_playing_song = qm.pop_next()
+        assert now_playing_song and now_playing_song["user"] == now_playing_user
+
+        qm.enqueue("/songs/b1---b1.mp4", "UserB")
+        qm.enqueue("/songs/c1---c1.mp4", "UserC")
+
+        assert [item["user"] for item in qm.queue] == [
+            "UserB",
+            "UserA",
+            "UserC",
+            "UserA",
+            "UserA",
+            "UserA",
+        ]
+
+    def test_fair_queue_spaces_multiple_songs_from_late_joiner(self, preferences, events):
+        """A late joiner's next song should use the round after their delayed first song."""
+        preferences.set("enable_fair_queue", True)
+        qm = QueueManager(
+            preferences=preferences,
+            events=events,
+            get_now_playing_user=lambda: None,
+            filename_from_path=extract_title,
+            get_available_songs=lambda: [],
+        )
+
+        for number in range(1, 4):
+            qm.enqueue(f"/songs/a{number}---a{number}.mp4", "UserA")
+        qm.enqueue("/songs/b1---b1.mp4", "UserB")
+        qm.enqueue("/songs/c1---c1.mp4", "UserC")
+        qm.enqueue("/songs/c2---c2.mp4", "UserC")
+
+        assert [item["user"] for item in qm.queue] == [
+            "UserA",
+            "UserB",
+            "UserA",
+            "UserC",
+            "UserA",
+            "UserC",
+        ]
+
 
 class TestQueueManagerEdit:
     """Test queue editing functionality."""

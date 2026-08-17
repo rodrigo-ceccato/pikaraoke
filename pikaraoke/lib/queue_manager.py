@@ -64,33 +64,53 @@ class QueueManager:
         return -1
 
     def _calculate_fair_queue_position(self, user: str) -> int:
-        """Calculate insertion position using Nagle Fair Queuing.
+        """Calculate an insertion position that spreads singers' turns.
 
-        Users take turns in rounds: a user's Nth song is placed after all
-        other users' Nth songs (or at queue end).
+        Existing singers keep their next turn in the usual round-robin order.
+        A singer joining an established queue enters a progressively later
+        round, which spreads late arrivals through an existing backlog instead
+        of moving every newcomer into the first round.
         """
-        # Count how many songs this user already has in queue
-        user_song_count = sum(1 for item in self.queue if item["user"] == user)
+        now_playing_user = self._get_now_playing_user() if self._get_now_playing_user else None
+        user_order = [now_playing_user] if now_playing_user else []
+        user_order.extend(item["user"] for item in self.queue if item["user"] not in user_order)
 
-        # Find position after the last song in "round N" where N = user_song_count
-        # Round 0 = first song from each user, Round 1 = second song, etc.
-        target_round = user_song_count
-        songs_seen_per_user: dict[str, int] = {}
+        is_new_user = user not in user_order
+        if is_new_user:
+            user_order.append(user)
 
-        for idx, item in enumerate(self.queue):
-            queue_user = item["user"]
-            songs_seen_per_user[queue_user] = songs_seen_per_user.get(queue_user, 0) + 1
-            # This song is in round (count - 1) for its user
-            song_round = songs_seen_per_user[queue_user] - 1
-            if song_round == target_round:
-                # Found a song in the target round, insert after it
-                # Keep scanning to find the LAST song in this round
-                pass
-            elif song_round > target_round:
-                # We've moved past target round, insert here
+        user_positions = {queue_user: index for index, queue_user in enumerate(user_order)}
+
+        # Infer each queued song's effective round from the rotation already in
+        # the queue. A position that wraps back to an earlier singer starts the
+        # next round. This preserves the delayed round assigned to a late joiner.
+        queued_rounds: list[int] = []
+        current_round = 0
+        previous_user_position = user_positions[now_playing_user] if now_playing_user else None
+        last_round_for_user = 0 if now_playing_user == user else None
+
+        for item in self.queue:
+            queue_user_position = user_positions[item["user"]]
+            if previous_user_position is not None and queue_user_position <= previous_user_position:
+                current_round += 1
+            queued_rounds.append(current_round)
+            if item["user"] == user:
+                last_round_for_user = current_round
+            previous_user_position = queue_user_position
+
+        # New singers join one round later for each singer already in rotation.
+        # Existing singers return in the round after their last scheduled song.
+        if is_new_user:
+            target_round = max(0, user_positions[user] - 1)
+        else:
+            target_round = (last_round_for_user or 0) + 1
+
+        for idx, (item, song_round) in enumerate(zip(self.queue, queued_rounds)):
+            if song_round > target_round or (
+                song_round == target_round and user_positions[item["user"]] > user_positions[user]
+            ):
                 return idx
 
-        # All songs are in rounds <= target_round, append to end
         return len(self.queue)
 
     def enqueue(
